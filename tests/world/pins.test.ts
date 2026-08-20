@@ -3,7 +3,7 @@ import { latLonToVec3 } from '@/world/geo'
 import { PIN_COLORS, pinPulse, pinSpecs, type HomeMarker } from '@/world/pins'
 
 const homes: HomeMarker[] = [
-  { id: 'a', title: '주방 화재', city: 'Seoul', country: 'KR', lat: 37.5665, lon: 126.978, localTimeLabel: '03:14', severity: 'critical' },
+  { id: 'a', title: '주방 화재', city: 'Seoul', country: 'KR', lat: 37.5665, lon: 126.978, localTimeLabel: '03:14', severity: 'critical', icon: '*' },
   { id: 'b', title: '택배 도착', city: 'Lisbon', country: 'PT', lat: 38.72, lon: -9.14, localTimeLabel: '14:02', severity: 'normal' },
 ]
 
@@ -35,6 +35,23 @@ describe('pinSpecs', () => {
 
   it('입력 순서와 id를 보존한다', () => {
     expect(pinSpecs(homes, 1).map((p) => p.id)).toEqual(['a', 'b'])
+  })
+
+  it('배지가 핀보다 바깥에 있고 같은 방향이다', () => {
+    // 안쪽이면 지구에 파묻히고, 방향이 다르면 엉뚱한 핀 위에 뜬다
+    const [pin] = pinSpecs(homes, 1)
+    const pinR = Math.hypot(...pin!.position)
+    const badgeR = Math.hypot(...pin!.badgePosition)
+    expect(badgeR).toBeGreaterThan(pinR)
+    for (let i = 0; i < 3; i += 1) {
+      expect(pin!.badgePosition[i]! / badgeR).toBeCloseTo(pin!.position[i]! / pinR, 10)
+    }
+  })
+
+  it('아이콘을 그대로 넘기고, 없으면 넘기지 않는다', () => {
+    const [withIcon, without] = pinSpecs(homes, 1)
+    expect(withIcon!.icon).toBe('*')
+    expect(without!.icon).toBeUndefined()
   })
 
   it('빈 목록도 받는다', () => {

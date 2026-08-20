@@ -25,6 +25,7 @@ function toHomes(scenarios: readonly Scenario[]): HomeMarker[] {
     lon: s.locale.lon,
     localTimeLabel: s.locale.localTimeLabel,
     severity: s.severity,
+    ...(s.icon ? { icon: s.icon } : {}),
   }))
 }
 

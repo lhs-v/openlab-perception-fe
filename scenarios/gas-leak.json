@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "가스 누출",
   "summary": "주방 가스 농도가 임계치를 넘어 계속 상승 중",
+  "icon": "💨",
   "severity": "critical",
   "durationMs": 45000,
   "locale": {

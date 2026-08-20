@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "거실 유리잔 파손",
   "summary": "유리 깨지는 소리가 났으나 거주자가 이미 정리 중",
+  "icon": "🥂",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "반려동물 단독 활동",
   "summary": "빈집에서 고양이가 가구 사이를 돌아다니는 중",
+  "icon": "🐈",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

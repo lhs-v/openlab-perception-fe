@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "야간 주방 이용",
   "summary": "거주자가 잠에서 깨어 물을 마시러 나옴",
+  "icon": "🌙",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

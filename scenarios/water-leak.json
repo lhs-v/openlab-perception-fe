@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "누수",
   "summary": "세탁실에서 시작된 물이 바닥을 따라 번지는 중",
+  "icon": "💧",
   "severity": "critical",
   "durationMs": 45000,
   "locale": {

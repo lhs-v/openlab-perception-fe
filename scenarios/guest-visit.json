@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "손님 방문",
   "summary": "초인종이 울리고 거주자가 문을 열어줌",
+  "icon": "🔔",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

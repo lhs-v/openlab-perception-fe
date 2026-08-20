@@ -18,6 +18,7 @@ import {
 import { FIELD_OF_VIEW, HALO_SCALE, REST_DISTANCE } from '../dive'
 import type { Dot } from '../dots'
 import type { PinSpec } from '../pins'
+import { disposeIconTextures } from './pinIcons'
 import { PinLayer } from './pinLayer'
 
 export const GLOBE_RADIUS = 1
@@ -185,6 +186,7 @@ export class GlobeScene {
 
     this.#disposePoints()
     this.#pins.dispose()
+    disposeIconTextures()
 
     if (this.#occluder) {
       this.#globe.remove(this.#occluder)

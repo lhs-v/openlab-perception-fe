@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "주행 장애물",
   "summary": "로봇청소기가 바닥에 놓인 물건 앞에서 멈춤",
+  "icon": "🤖",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

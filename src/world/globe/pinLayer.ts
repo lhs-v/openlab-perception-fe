@@ -5,9 +5,21 @@ import {
   Group,
   Points,
   ShaderMaterial,
+  Sprite,
+  SpriteMaterial,
 } from 'three'
 import { REST_DISTANCE } from '../dive'
 import { pinPulse, type PinSpec } from '../pins'
+import { iconTexture } from './pinIcons'
+
+/**
+ * 배지의 월드 크기.
+ *
+ * 안식 거리에서 화면 세로가 약 2.76 월드 단위를 덮으므로, 1080px 화면에서
+ * 이 값이 대략 33픽셀이 된다. 작으면 무슨 그림인지 안 보이고, 크면 지구를
+ * 가린다.
+ */
+const BADGE_SCALE = 0.085
 
 /**
  * 지구본 위의 핀 층.
@@ -22,6 +34,7 @@ export class PinLayer {
 
   #points: Points | null = null
   #material: ShaderMaterial | null = null
+  #badges: Sprite[] = []
   #specs: readonly PinSpec[] = []
 
   setPins(specs: readonly PinSpec[]): void {
@@ -87,6 +100,31 @@ export class PinLayer {
 
     this.#points = new Points(geometry, this.#material)
     this.group.add(this.#points)
+    this.#buildBadges(specs)
+  }
+
+  /**
+   * 핀 위에 뜨는 아이콘 배지.
+   *
+   * 스프라이트라 늘 카메라를 향한다 — 지구가 돌아도 글리프가 기울지 않는다.
+   * 깊이 시험은 켜둔다. 그래야 오클루더 구가 지구 뒤편 배지를 가려서
+   * 화면에 붙어 있는 것이 아니라 지구에 얹혀 있는 것으로 읽힌다.
+   */
+  #buildBadges(specs: readonly PinSpec[]): void {
+    for (const spec of specs) {
+      if (!spec.icon) continue
+      const map = iconTexture(spec.icon)
+      if (!map) continue
+
+      const sprite = new Sprite(
+        new SpriteMaterial({ map, transparent: true, depthWrite: false }),
+      )
+      const [x, y, z] = spec.badgePosition
+      sprite.position.set(x, y, z)
+      sprite.scale.setScalar(BADGE_SCALE)
+      this.group.add(sprite)
+      this.#badges.push(sprite)
+    }
   }
 
   /** 매 프레임 맥동만 갱신한다. 지오메트리는 다시 만들지 않는다. */
@@ -101,6 +139,12 @@ export class PinLayer {
   }
 
   dispose(): void {
+    for (const badge of this.#badges) {
+      this.group.remove(badge)
+      badge.material.dispose()
+    }
+    this.#badges = []
+
     if (this.#points) {
       this.group.remove(this.#points)
       this.#points.geometry.dispose()

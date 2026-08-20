@@ -93,7 +93,7 @@ export default function WorldHud({ homes, countdownMs, onPick, dimmed }: Props) 
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: '8px 1fr auto',
+                gridTemplateColumns: '18px 1fr auto',
                 alignItems: 'center',
                 gap: 10,
                 padding: '9px 10px',
@@ -106,15 +106,22 @@ export default function WorldHud({ homes, countdownMs, onPick, dimmed }: Props) 
                 font: 'inherit',
               }}
             >
+              {/* 지구본의 배지와 같은 글자를 쓴다. 목록에서 본 것을 지구에서
+                  다시 찾을 수 있어야 한다. */}
               <span
+                data-testid={`home-icon-${home.id}`}
                 aria-hidden
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: `#${PIN_COLORS[home.severity].toString(16).padStart(6, '0')}`,
+                  fontSize: 14,
+                  lineHeight: 1,
+                  textAlign: 'center',
+                  filter: `drop-shadow(0 0 6px #${PIN_COLORS[home.severity]
+                    .toString(16)
+                    .padStart(6, '0')}66)`,
                 }}
-              />
+              >
+                {home.icon ?? '•'}
+              </span>
               <span style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {home.title}
               </span>

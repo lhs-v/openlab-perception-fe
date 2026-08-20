@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "침실 낙상",
   "summary": "고령 거주자가 침대 옆에서 쓰러진 뒤 움직임이 없음",
+  "icon": "🛏",
   "severity": "critical",
   "durationMs": 45000,
   "locale": {

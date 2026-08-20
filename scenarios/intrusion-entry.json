@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "현관 침입",
   "summary": "심야 현관에서 낯선 사람의 진입이 감지됨",
+  "icon": "🚪",
   "severity": "critical",
   "durationMs": 45000,
   "locale": {

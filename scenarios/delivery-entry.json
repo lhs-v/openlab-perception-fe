@@ -3,6 +3,7 @@
   "provisional": true,
   "title": "택배 도착",
   "summary": "현관 앞에 상자가 놓이고 배송원이 떠남",
+  "icon": "📦",
   "severity": "normal",
   "durationMs": 45000,
   "locale": {

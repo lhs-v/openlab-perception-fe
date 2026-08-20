@@ -109,6 +109,12 @@ export const scenarioSchema = z.object({
   provisional: z.boolean(),
   title: z.string().min(1),
   summary: z.string().min(1),
+  /**
+   * 지구본 핀 위에 띄우는 한 글자. 무슨 일인지 간접적으로 알리는 용도이고,
+   * 없으면 핀만 뜬다. 시나리오가 스스로 말하게 두는 편이, 지구본이 별도
+   * 매핑표를 들고 시나리오마다 두 곳을 고치는 것보다 낫다.
+   */
+  icon: z.string().min(1).max(8).optional(),
   severity: z.enum(['critical', 'normal']),
   durationMs: z.number().int().positive(),
   locale: localeSchema,

@@ -98,3 +98,17 @@ test('지구본에서는 나가기 버튼이 없다', async ({ page }) => {
   await expect(page.getByTestId('home-list')).toBeVisible()
   await expect(page.getByTestId('exit-scenario')).toHaveCount(0)
 })
+
+test('열두 집이 모두 아이콘과 함께 목록에 있다', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('home-count')).toHaveText('12')
+
+  // 목록의 글자와 지구본 배지가 같아야 목록에서 본 것을 지구에서 찾을 수 있다
+  const icons = page.locator('[data-testid^="home-icon-"]')
+  await expect(icons).toHaveCount(12)
+
+  const texts = await icons.allTextContents()
+  // 아이콘이 없어 점으로 대체된 집이 하나도 없어야 한다
+  expect(texts.filter((t) => t.trim() === '•')).toHaveLength(0)
+  expect(new Set(texts).size).toBe(12)
+})

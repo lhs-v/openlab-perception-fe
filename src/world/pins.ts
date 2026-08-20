@@ -19,6 +19,8 @@ export type HomeMarker = {
   /** 화면에 그대로 찍는 현지 시각. 실제 시계가 아니라 서사의 시각이다 */
   localTimeLabel: string
   severity: Severity
+  /** 핀 위에 띄울 한 글자. 없으면 핀만 뜬다 */
+  icon?: string
 }
 
 export type PinSpec = {
@@ -26,6 +28,9 @@ export type PinSpec = {
   position: Vec3
   color: number
   severity: Severity
+  icon?: string
+  /** 배지가 떠 있을 자리. 핀보다 더 바깥이다 */
+  badgePosition: Vec3
 }
 
 export const PIN_COLORS: Record<Severity, number> = {
@@ -36,6 +41,9 @@ export const PIN_COLORS: Record<Severity, number> = {
 /** 지표에서 띄우는 높이. 붙이면 지구 점들에 반쪽이 먹힌다. */
 const PIN_LIFT = 1.015
 
+/** 배지가 뜨는 높이. 핀 위에 얹혀 보이되 지구에서 떨어져 보이지는 않는다. */
+const BADGE_LIFT = 1.085
+
 const PULSE = {
   critical: { periodMs: 1400, peak: 1 },
   normal: { periodMs: 4200, peak: 0.45 },
@@ -45,8 +53,10 @@ export function pinSpecs(homes: readonly HomeMarker[], radius: number): PinSpec[
   return homes.map((home) => ({
     id: home.id,
     position: latLonToVec3(home.lat, home.lon, radius * PIN_LIFT),
+    badgePosition: latLonToVec3(home.lat, home.lon, radius * BADGE_LIFT),
     color: PIN_COLORS[home.severity],
     severity: home.severity,
+    ...(home.icon ? { icon: home.icon } : {}),
   }))
 }
 
