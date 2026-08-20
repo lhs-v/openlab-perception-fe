@@ -7,6 +7,7 @@ import {
   NEAR_DISTANCE,
   REST_DISTANCE,
   VEIL_FROM,
+  ascentFrame,
   diveFrame,
   spinToFace,
 } from '@/world/dive'
@@ -104,12 +105,12 @@ describe('프레이밍', () => {
     expect(halfHeight(REST_DISTANCE)).toBeGreaterThan(HALO_SCALE * 1.1)
   })
 
-  it('안식 거리에서 지구가 화면의 절반 남짓을 차지한다', () => {
+  it('안식 거리에서 지구가 세로의 3분의 2쯤을 차지한다', () => {
     // 위아래 양쪽을 묶는다. 한쪽만 묶으면 반대편 극단으로 흘러간다 —
-    // 실제로 91%까지 갔다가 63%까지 물러났다가 다시 73%로 왔다.
+    // 실제로 91%까지 갔다가 56%까지 물러났다.
     const share = 1 / halfHeight(REST_DISTANCE)
-    expect(share).toBeGreaterThan(0.5)
-    expect(share).toBeLessThan(0.65)
+    expect(share).toBeGreaterThan(0.6)
+    expect(share).toBeLessThan(0.8)
   })
 
   it('다 내려오면 지구가 화면을 넘긴다', () => {
@@ -119,5 +120,45 @@ describe('프레이밍', () => {
 
   it('카메라가 지구 표면 안으로 들어가지 않는다', () => {
     expect(NEAR_DISTANCE).toBeGreaterThan(1)
+  })
+})
+
+describe('ascentFrame', () => {
+  const from = { fromSpinY: 1.7, fromDistance: NEAR_DISTANCE }
+
+  it('시작은 하강이 끝난 자리 그대로다', () => {
+    const frame = ascentFrame({ ...from, progress: 0 })
+    expect(frame.distance).toBeCloseTo(NEAR_DISTANCE)
+    expect(frame.veil).toBe(1)
+  })
+
+  it('끝나면 안식 거리로 돌아와 있다', () => {
+    // 이게 없으면 시나리오에서 나올 때마다 지구가 코앞에 남는다
+    const frame = ascentFrame({ ...from, progress: 1 })
+    expect(frame.distance).toBeCloseTo(REST_DISTANCE)
+    expect(frame.veil).toBe(0)
+  })
+
+  it('거리가 단조 증가한다', () => {
+    let previous = -Infinity
+    for (let p = 0; p <= 1; p += 0.02) {
+      const { distance } = ascentFrame({ ...from, progress: p })
+      expect(distance).toBeGreaterThanOrEqual(previous - 1e-9)
+      previous = distance
+    }
+  })
+
+  it('각도는 건드리지 않는다', () => {
+    // 원래 각도로 되돌리면 나오는 순간 지구가 홱 튄다
+    for (const p of [0, 0.5, 1]) {
+      expect(ascentFrame({ ...from, progress: p }).spinY).toBeCloseTo(1.7)
+    }
+  })
+
+  it('장막이 앞쪽에서 걷힌다', () => {
+    // 하강은 뒤쪽에서 잠기므로, 나올 때는 먼저 벗어난 뒤 물러나야 순서가 맞다
+    expect(ascentFrame({ ...from, progress: 0.1 }).veil).toBeGreaterThan(0)
+    expect(ascentFrame({ ...from, progress: 1 - VEIL_FROM }).veil).toBe(0)
+    expect(ascentFrame({ ...from, progress: 0.6 }).veil).toBe(0)
   })
 })

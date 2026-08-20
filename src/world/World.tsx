@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AttractDirector } from './attract-director'
-import { DIVE_MS, REST_DISTANCE, diveFrame } from './dive'
+import { DIVE_MS, REST_DISTANCE, ascentFrame, diveFrame } from './dive'
 import GlobeCanvas, { type GlobeHandle } from './GlobeCanvas'
 import { HANDOFF_COLOR, HANDOFF_FADE_MS, type EnterScenario } from './handoff'
 import { type HomeMarker, pinSpecs } from './pins'
@@ -27,6 +27,7 @@ export type WorldProps = {
 }
 
 type Dive = { id: string; startedAt: number }
+type Ascent = { startedAt: number; fromSpinY: number; fromDistance: number }
 
 /**
  * 지구본 화면의 유일한 공개 진입점.
@@ -45,6 +46,7 @@ export default function World({
   /** 하강이 시작될 때의 자세. 매 프레임 현재 자세를 읽으면 자기 자신을 쫓아간다 */
   const divePoseRef = useRef<{ spinY: number; distance: number } | null>(null)
   const [dive, setDive] = useState<Dive | null>(null)
+  const [ascent, setAscent] = useState<Ascent | null>(null)
   const [veil, setVeil] = useState(0)
   const [countdown, setCountdown] = useState<number | null>(null)
 
@@ -61,18 +63,44 @@ export default function World({
     setDive({ id, startedAt: now })
   }, [byId])
 
-  // 시나리오가 닫히면 지구본으로 돌아온다
+  // 시나리오가 닫히면 카메라를 다시 끌어올린다.
+  // 그냥 setPose(null)만 하면 자전만 풀리고 카메라는 하강이 끝난 1.35에
+  // 남는다 — 지구 표면 코앞이라 나올 때마다 지구가 화면을 넘친다.
   useEffect(() => {
     if (activeScenarioId) return
-    director.scenarioEnded(performance.now())
-    setVeil(0)
-    globeRef.current?.setPose(null)
+    const now = performance.now()
+    director.scenarioEnded(now)
+    const pose = globeRef.current?.pose()
+    if (!pose || pose.distance >= REST_DISTANCE - 0.01) {
+      setVeil(0)
+      globeRef.current?.setPose(null)
+      return
+    }
+    setVeil(1)
+    setAscent({ startedAt: now, fromSpinY: pose.spinY, fromDistance: pose.distance })
   }, [activeScenarioId, director])
 
   useEffect(() => {
     let frame = requestAnimationFrame(function loop(now) {
       frame = requestAnimationFrame(loop)
       setCountdown(director.countdownMs(now))
+
+      if (ascent) {
+        const progress = (now - ascent.startedAt) / DIVE_MS
+        const shot = ascentFrame({
+          fromSpinY: ascent.fromSpinY,
+          fromDistance: ascent.fromDistance,
+          progress,
+        })
+        globeRef.current?.setPose({ spinY: shot.spinY, distance: shot.distance })
+        setVeil(shot.veil)
+        if (progress >= 1) {
+          setAscent(null)
+          // 여기서야 자유 자전으로 돌려준다. 상승 중에 풀면 카메라를 놓친다
+          globeRef.current?.setPose(null)
+        }
+        return
+      }
 
       if (dive) {
         const home = byId.get(dive.id)
@@ -115,7 +143,7 @@ export default function World({
       if (next) beginDive(next, now)
     })
     return () => cancelAnimationFrame(frame)
-  }, [director, dive, byId, beginDive, onEnterScenario, activeScenarioId])
+  }, [director, dive, ascent, byId, beginDive, onEnterScenario, activeScenarioId])
 
   const interact = useCallback(() => {
     director.interacted(performance.now())
@@ -141,6 +169,7 @@ export default function World({
     <div
       data-testid="world"
       data-diving={dive ? 'true' : 'false'}
+      data-ascending={ascent ? 'true' : 'false'}
       onPointerDown={interact}
       onWheel={interact}
       style={{ position: 'absolute', inset: 0, background: HANDOFF_COLOR }}
@@ -151,7 +180,7 @@ export default function World({
         homes={homes}
         countdownMs={countdown}
         onPick={pick}
-        dimmed={Boolean(activeScenarioId) || Boolean(dive)}
+        dimmed={Boolean(activeScenarioId) || Boolean(dive) || Boolean(ascent)}
       />
 
       {/* 인계 장막. 하강 끝에서 화면을 이 색으로 가득 채운 뒤 다음 화면에 넘긴다 */}

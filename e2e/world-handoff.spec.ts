@@ -161,3 +161,53 @@ test('지구본 안쪽에 실제로 육지가 그려진다', async ({ page }) =>
   // 그리고 그 위에 육지가 있어야 지구로 읽힌다
   expect(seen.landRatio).toBeGreaterThan(0.02)
 })
+
+/** 지구 원판이 화면 세로에서 차지하는 비율 */
+async function globeShare(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const gl = document.querySelector('[data-testid="globe"] canvas') as HTMLCanvasElement
+    const c = document.createElement('canvas')
+    c.width = gl.width
+    c.height = gl.height
+    const ctx = c.getContext('2d')!
+    ctx.drawImage(gl, 0, 0)
+    const { data } = ctx.getImageData(0, 0, c.width, c.height)
+
+    // 세로 한가운데 줄을 훑어 몸통이 칠해진 구간의 폭을 잰다
+    const y = Math.round(c.height / 2)
+    let first = -1
+    let last = -1
+    for (let x = 0; x < c.width; x += 1) {
+      const i = (y * c.width + x) * 4
+      // 몸통은 배경보다 밝다. 헤일로만으로는 이 문턱을 넘지 못한다
+      if (data[i + 2]! < 30) continue
+      if (first < 0) first = x
+      last = x
+    }
+    return first < 0 ? 0 : (last - first) / c.height
+  })
+}
+
+test('시나리오에서 나오면 카메라가 원래 거리로 돌아온다', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('world').click({ position: { x: 60, y: 900 } })
+  await page.waitForTimeout(1500)
+  const before = await globeShare(page)
+
+  await page.getByTestId('home-kitchen-fire').click()
+  await expect(page.getByTestId('stage')).toBeVisible({ timeout: ENTRY_TIMEOUT })
+
+  await page.getByTestId('exit-scenario').click()
+  // 상승이 끝날 때까지 기다린다
+  await expect(page.getByTestId('world')).toHaveAttribute('data-ascending', 'false', {
+    timeout: 5_000,
+  })
+  await page.waitForTimeout(600)
+
+  const after = await globeShare(page)
+
+  // 상승이 없으면 하강이 끝난 1.35에 남아 지구가 화면을 넘친다
+  expect(after).toBeGreaterThan(0.2)
+  expect(after).toBeLessThan(before * 1.25)
+  expect(after).toBeGreaterThan(before * 0.75)
+})

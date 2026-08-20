@@ -12,14 +12,10 @@ export const FIELD_OF_VIEW = 38
 /**
  * 아무 일도 없을 때의 카메라 거리.
  *
- * 시야각 38도에서 이 거리면 지구가 화면 세로의 약 56%를 차지하고 위아래로
- * 여백이 남는다. 참고한 관제형 지구본들이 대체로 이 정도 여백을 둔다.
- *
- * 3.2에서는 지구가 세로를 91% 채우고 헤일로가 잘려 나갔다. 4.0도 73%로
- * 여전히 과했다 — 특히 지구에 몸통 색이 생긴 뒤로는 같은 크기라도 훨씬
- * 크게 읽힌다. 몸통이 없던 시절의 감각으로 거리를 정하면 안 된다.
+ * 시야각 38도에서 이 거리면 지구가 화면 세로의 약 73%를 차지한다. 3.2에서는
+ * 91%까지 차서 헤일로가 잘려 나갔다.
  */
-export const REST_DISTANCE = 5.2
+export const REST_DISTANCE = 4.0
 
 /** 다 내려왔을 때의 카메라 거리 */
 export const NEAR_DISTANCE = 1.35
@@ -88,4 +84,33 @@ export function diveFrame(input: DiveInput): DiveFrame {
     progress <= VEIL_FROM ? 0 : clamp01((progress - VEIL_FROM) / (1 - VEIL_FROM))
 
   return { spinY, distance, veil }
+}
+
+/**
+ * 시나리오에서 빠져나올 때의 한 프레임.
+ *
+ * 하강의 거울상이다. 이게 없으면 `setPose(null)`이 자전만 풀어주고 카메라는
+ * 하강이 끝난 1.35에 그대로 남는다 — 지구 표면 코앞이라 나올 때마다 지구가
+ * 화면을 넘친다.
+ *
+ * 장막은 앞쪽에서 걷힌다. 하강이 뒤쪽 28%에서 색에 잠겼으니, 나올 때는 그
+ * 색에서 먼저 벗어난 뒤 물러나는 것이 순서로 읽힌다.
+ */
+export function ascentFrame(input: {
+  fromSpinY: number
+  fromDistance: number
+  progress: number
+}): DiveFrame {
+  const progress = clamp01(input.progress)
+  const eased = easeInOut(progress)
+
+  const reveal = 1 - VEIL_FROM
+  const veil = progress >= reveal ? 0 : 1 - progress / reveal
+
+  return {
+    // 각도는 건드리지 않는다. 원래 각도로 되돌리면 나오는 순간 지구가 홱 튄다
+    spinY: input.fromSpinY,
+    distance: input.fromDistance + (REST_DISTANCE - input.fromDistance) * eased,
+    veil,
+  }
 }
