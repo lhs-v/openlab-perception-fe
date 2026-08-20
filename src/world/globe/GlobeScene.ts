@@ -6,6 +6,7 @@ import {
   Color,
   Group,
   Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
   Points,
   PointsMaterial,
@@ -50,6 +51,8 @@ export class GlobeScene {
   #globe = new Group()
   #points: Points | null = null
   #halo: Mesh | null = null
+  /** 색은 안 쓰고 깊이만 쓰는 구. 지구 뒤편을 가린다 */
+  #occluder: Mesh | null = null
   #pins = new PinLayer()
   /** 하강이 카메라를 잡고 있는 동안의 자세. null이면 자유 자전. */
   #pose: { spinY: number; distance: number } | null = null
@@ -74,6 +77,7 @@ export class GlobeScene {
 
     // 살짝 기울여야 극이 정면으로 오지 않아 구처럼 읽힌다
     this.#globe.rotation.z = 0.41
+    this.#buildOccluder()
     this.#globe.add(this.#pins.group)
     this.#scene.add(this.#globe)
 
@@ -184,6 +188,13 @@ export class GlobeScene {
     this.#disposePoints()
     this.#pins.dispose()
 
+    if (this.#occluder) {
+      this.#globe.remove(this.#occluder)
+      this.#occluder.geometry.dispose()
+      ;(this.#occluder.material as MeshBasicMaterial).dispose()
+      this.#occluder = null
+    }
+
     if (this.#halo) {
       this.#scene.remove(this.#halo)
       this.#halo.geometry.dispose()
@@ -209,6 +220,25 @@ export class GlobeScene {
     this.#points.geometry.dispose()
     ;(this.#points.material as PointsMaterial).dispose()
     this.#points = null
+  }
+
+  /**
+   * 지구를 불투명하게 만드는 장치.
+   *
+   * 육지 점도 핀도 깊이를 쓰지 않으므로, 이게 없으면 지구 뒤편의 점과 핀이
+   * 앞면 위에 그대로 겹쳐 그려진다. 그러면 자전해도 뒤로 넘어가는 것이
+   * 없어서 핀들이 지구에 붙어 있지 않고 화면에 고정된 것처럼 보인다.
+   *
+   * 색은 쓰지 않고 깊이 버퍼만 채운다. 반지름을 살짝 줄여 표면의 점들이
+   * 자기 자신에게 가려지지 않게 한다.
+   */
+  #buildOccluder(): void {
+    const geometry = new SphereGeometry(GLOBE_RADIUS * 0.985, 48, 48)
+    const material = new MeshBasicMaterial({ colorWrite: false })
+    this.#occluder = new Mesh(geometry, material)
+    // 불투명 물체가 먼저 그려져야 깊이가 채워진 뒤 점들이 시험된다
+    this.#occluder.renderOrder = -1
+    this.#globe.add(this.#occluder)
   }
 
   #buildHalo(): void {

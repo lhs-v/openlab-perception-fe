@@ -51,19 +51,21 @@ export class PinLayer {
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,
-      uniforms: { uScale: { value: 260 } },
+      // 기준 거리에서의 실제 픽셀 크기를 그대로 쓴다. 예전처럼 임의의 배율을
+      // 곱하면 카메라 거리(3.2)로 나뉘면서 기본 크기가 300픽셀을 넘어간다.
+      uniforms: { uRefDistance: { value: 3.2 } },
       vertexShader: `
         attribute vec3 pinColor;
         attribute float pulse;
         varying vec3 vColor;
         varying float vPulse;
-        uniform float uScale;
+        uniform float uRefDistance;
         void main() {
           vColor = pinColor;
           vPulse = pulse;
           vec4 view = modelViewMatrix * vec4(position, 1.0);
-          // 맥동이 셀 때 굵어진다. 원근도 반영해 뒤쪽 핀이 작아진다.
-          gl_PointSize = (4.0 + pulse * 9.0) * (uScale / -view.z);
+          // 기준 거리에서 5px, 맥동이 셀 때 12px까지. 뒤쪽 핀은 원근으로 작아진다.
+          gl_PointSize = (5.0 + pulse * 7.0) * (uRefDistance / -view.z);
           gl_Position = projectionMatrix * view;
         }
       `,
@@ -74,9 +76,10 @@ export class PinLayer {
           // 가운데가 단단하고 밖으로 번지는 점. 사각형으로 보이지 않게 한다.
           float d = length(gl_PointCoord - vec2(0.5));
           if (d > 0.5) discard;
-          float core = smoothstep(0.5, 0.06, d);
-          float halo = smoothstep(0.5, 0.0, d) * 0.55 * vPulse;
-          gl_FragColor = vec4(vColor, clamp(core * 0.9 + halo, 0.0, 1.0));
+          float core = smoothstep(0.5, 0.12, d);
+          float halo = smoothstep(0.5, 0.0, d) * 0.3 * vPulse;
+          // 가산 합성이라 알파를 낮게 잡아야 흰색으로 타지 않는다
+          gl_FragColor = vec4(vColor, clamp(core * 0.5 + halo, 0.0, 1.0));
         }
       `,
     })

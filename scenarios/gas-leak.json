@@ -1,0 +1,93 @@
+{
+  "id": "gas-leak",
+  "provisional": true,
+  "title": "가스 누출",
+  "summary": "주방 가스 농도가 임계치를 넘어 계속 상승 중",
+  "severity": "critical",
+  "durationMs": 45000,
+  "locale": {
+    "city": "Warsaw",
+    "country": "PL",
+    "lat": 52.23,
+    "lon": 21.01,
+    "tz": "UTC",
+    "localTimeLabel": "23:07"
+  },
+  "cameras": {
+    "livingroom": {
+      "label": "거실"
+    },
+    "entry": {
+      "label": "현관"
+    },
+    "bedroom": {
+      "label": "침실"
+    },
+    "rvc": {
+      "label": "로봇청소기",
+      "path": [
+        {
+          "t": 0,
+          "x": 0.25,
+          "y": 0.7,
+          "heading": 0
+        },
+        {
+          "t": 45000,
+          "x": 0.6,
+          "y": 0.35,
+          "heading": 75
+        }
+      ]
+    }
+  },
+  "sensors": [],
+  "audio": {
+    "events": []
+  },
+  "reasoning": {
+    "l1": [
+      {
+        "id": "e1",
+        "t": 6000,
+        "modality": "video",
+        "source": "livingroom",
+        "trigger": "placeholder_signal"
+      }
+    ],
+    "l2": [
+      {
+        "id": "d1",
+        "t": 9000,
+        "refs": [
+          "e1"
+        ],
+        "modality": "video",
+        "source": "livingroom",
+        "text": "아직 작성되지 않은 관측 서술"
+      }
+    ],
+    "l3": [
+      {
+        "id": "c1",
+        "t": 21000,
+        "refs": [
+          "d1"
+        ],
+        "text": "아직 작성되지 않은 상황 맥락"
+      }
+    ],
+    "l4": {
+      "id": "i1",
+      "t": 27000,
+      "refs": [
+        "c1"
+      ],
+      "intervene": true,
+      "rationale": "아직 작성되지 않은 판단 근거",
+      "actions": [
+        "아직 작성되지 않은 조치"
+      ]
+    }
+  }
+}

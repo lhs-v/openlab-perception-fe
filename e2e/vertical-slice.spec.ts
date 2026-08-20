@@ -6,6 +6,9 @@ import { expect, test } from '@playwright/test'
  */
 async function enterScenario(page: import('@playwright/test').Page) {
   await page.goto('/')
+  // 자동 진입은 12개 중 하나를 무작위로 고른다. 아래 검사들은 kitchen-fire의
+  // 구체적인 타이밍과 연결선 수를 보므로 직접 골라 들어간다.
+  await page.getByTestId('home-kitchen-fire').click()
   await expect(page.getByTestId('stage')).toBeVisible({ timeout: 20_000 })
 }
 

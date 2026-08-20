@@ -1,0 +1,90 @@
+{
+  "id": "glass-break-livingroom",
+  "provisional": true,
+  "title": "거실 유리잔 파손",
+  "summary": "유리 깨지는 소리가 났으나 거주자가 이미 정리 중",
+  "severity": "normal",
+  "durationMs": 45000,
+  "locale": {
+    "city": "Lisbon",
+    "country": "PT",
+    "lat": 38.72,
+    "lon": -9.14,
+    "tz": "UTC",
+    "localTimeLabel": "14:02"
+  },
+  "cameras": {
+    "livingroom": {
+      "label": "거실"
+    },
+    "entry": {
+      "label": "현관"
+    },
+    "bedroom": {
+      "label": "침실"
+    },
+    "rvc": {
+      "label": "로봇청소기",
+      "path": [
+        {
+          "t": 0,
+          "x": 0.25,
+          "y": 0.7,
+          "heading": 0
+        },
+        {
+          "t": 45000,
+          "x": 0.6,
+          "y": 0.35,
+          "heading": 75
+        }
+      ]
+    }
+  },
+  "sensors": [],
+  "audio": {
+    "events": []
+  },
+  "reasoning": {
+    "l1": [
+      {
+        "id": "e1",
+        "t": 6000,
+        "modality": "video",
+        "source": "livingroom",
+        "trigger": "placeholder_signal"
+      }
+    ],
+    "l2": [
+      {
+        "id": "d1",
+        "t": 9000,
+        "refs": [
+          "e1"
+        ],
+        "modality": "video",
+        "source": "livingroom",
+        "text": "아직 작성되지 않은 관측 서술"
+      }
+    ],
+    "l3": [
+      {
+        "id": "c1",
+        "t": 21000,
+        "refs": [
+          "d1"
+        ],
+        "text": "아직 작성되지 않은 상황 맥락"
+      }
+    ],
+    "l4": {
+      "id": "i1",
+      "t": 27000,
+      "refs": [
+        "c1"
+      ],
+      "intervene": false,
+      "rationale": "아직 작성되지 않은 판단 근거"
+    }
+  }
+}
