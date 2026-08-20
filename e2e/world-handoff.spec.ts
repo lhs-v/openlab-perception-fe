@@ -112,3 +112,52 @@ test('열두 집이 모두 아이콘과 함께 목록에 있다', async ({ page 
   expect(texts.filter((t) => t.trim() === '•')).toHaveLength(0)
   expect(new Set(texts).size).toBe(12)
 })
+
+test('지구본 안쪽에 실제로 육지가 그려진다', async ({ page }) => {
+  await page.goto('/')
+  // 자동 진입을 막고 첫 프레임이 안정될 때까지 둔다
+  await page.getByTestId('world').click({ position: { x: 60, y: 900 } })
+  await page.waitForTimeout(2000)
+
+  const seen = await page.evaluate(() => {
+    const gl = document.querySelector('[data-testid="globe"] canvas') as HTMLCanvasElement
+    const c = document.createElement('canvas')
+    c.width = gl.width
+    c.height = gl.height
+    const ctx = c.getContext('2d')!
+    ctx.drawImage(gl, 0, 0)
+    const { data } = ctx.getImageData(0, 0, c.width, c.height)
+
+    // 안쪽만 본다. 테두리를 포함하면 헤일로만 남은 상태로도 통과해버린다 —
+    // 실제로 그 상태가 한동안 "지구본이 렌더된다" 검사를 통과하고 있었다.
+    const cx = Math.round(c.width / 2)
+    const cy = Math.round(c.height / 2)
+    const r = Math.round(Math.min(c.width, c.height) * 0.28)
+
+    let samples = 0
+    let body = 0
+    let land = 0
+
+    for (let y = cy - r; y <= cy + r; y += 2) {
+      for (let x = cx - r; x <= cx + r; x += 2) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 > r * r) continue
+        samples += 1
+        const i = (y * c.width + x) * 4
+        const red = data[i]!
+        const green = data[i + 1]!
+        const blue = data[i + 2]!
+        const alpha = data[i + 3]!
+        if (alpha > 20) body += 1
+        // 육지 점은 몸통보다 훨씬 밝은 파랑이다
+        if (blue > 120 && blue - red > 40) land += 1
+      }
+    }
+
+    return { samples, bodyRatio: body / samples, landRatio: land / samples }
+  })
+
+  // 몸통이 칠해져 있어야 구체로 읽힌다. 안 칠하면 테두리만 빛나는 구멍이 된다
+  expect(seen.bodyRatio).toBeGreaterThan(0.9)
+  // 그리고 그 위에 육지가 있어야 지구로 읽힌다
+  expect(seen.landRatio).toBeGreaterThan(0.02)
+})

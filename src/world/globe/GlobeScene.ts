@@ -23,6 +23,27 @@ import { PinLayer } from './pinLayer'
 
 export const GLOBE_RADIUS = 1
 
+/**
+ * 절두체를 지구 주변으로 바짝 조인다.
+ *
+ * 0.1과 100으로 두면 비율이 1000:1이라 카메라 거리 4쯤에서 깊이 정밀도가
+ * 바닥난다. 오클루더(0.94)와 육지 점(1.0)의 간격을 구분하지 못해 점들이
+ * 통째로 깊이 시험에서 탈락하고, 화면에는 헤일로 테두리만 남는다.
+ *
+ * 하강 끝에서 카메라가 1.35까지 오므로 근평면은 그보다 지구 표면 쪽으로
+ * 넉넉히 앞에 있어야 한다.
+ */
+const NEAR_PLANE = 0.15
+const FAR_PLANE = 12
+
+/**
+ * 지구를 불투명하게 만드는 구의 반지름.
+ *
+ * 1.0에 너무 가까우면(0.985) 깊이 차이가 정밀도 아래로 내려가 점과 싸운다.
+ * 충분히 안쪽으로 넣되, 너무 작으면 가장자리에서 뒤편이 새어 나온다.
+ */
+const OCCLUDER_RADIUS = 0.94
+
 /** 자전 속도(라디안/초). 한 바퀴에 약 4분 — 눈에 띄되 어지럽지 않다. */
 const SPIN_RATE = 0.026
 
@@ -68,10 +89,11 @@ export class GlobeScene {
       canvas: options.canvas,
       antialias: false,
       alpha: true,
+      preserveDrawingBuffer: true,
     })
     this.#renderer.setClearColor(0x000000, 0)
 
-    this.#camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100)
+    this.#camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, NEAR_PLANE, FAR_PLANE)
     this.#camera.position.set(0, 0, REST_DISTANCE)
 
     // 살짝 기울여야 극이 정면으로 오지 않아 구처럼 읽힌다
@@ -121,8 +143,10 @@ export class GlobeScene {
     geometry.setAttribute('position', new BufferAttribute(positions, 3))
 
     const material = new PointsMaterial({
-      color: new Color(0x2f6ea8),
-      size: 0.011,
+      // 육지가 덩어리로 읽혀야 지구로 보인다. 점이 작고 어두우면 헤일로
+      // 테두리만 남고 가운데는 잡티처럼 보인다.
+      color: new Color(0x5aa6e8),
+      size: 0.016,
       sizeAttenuation: true,
       transparent: true,
       opacity: 0.95,
@@ -223,18 +247,20 @@ export class GlobeScene {
   }
 
   /**
-   * 지구를 불투명하게 만드는 장치.
+   * 지구의 몸통.
    *
-   * 육지 점도 핀도 깊이를 쓰지 않으므로, 이게 없으면 지구 뒤편의 점과 핀이
-   * 앞면 위에 그대로 겹쳐 그려진다. 그러면 자전해도 뒤로 넘어가는 것이
-   * 없어서 핀들이 지구에 붙어 있지 않고 화면에 고정된 것처럼 보인다.
+   * 두 가지를 한다. 깊이를 채워 뒤편의 점과 핀을 가린다 — 이게 없으면
+   * 자전해도 뒤로 넘어가는 것이 없어 핀이 화면에 고정된 것처럼 보인다.
+   * 그리고 배경보다 아주 조금 밝은 색으로 칠해 구체로 읽히게 한다. 색을
+   * 쓰지 않으면 테두리만 빛나는 구멍처럼 보이고, 그 안의 점들은 허공에
+   * 뿌려진 잡티가 된다.
    *
-   * 색은 쓰지 않고 깊이 버퍼만 채운다. 반지름을 살짝 줄여 표면의 점들이
-   * 자기 자신에게 가려지지 않게 한다.
+   * 반지름은 점들과 깊이 정밀도 안에서 확실히 구분될 만큼 안쪽으로 둔다 —
+   * 이게 부족하면 점이 전부 깊이 시험에서 탈락한다.
    */
   #buildOccluder(): void {
-    const geometry = new SphereGeometry(GLOBE_RADIUS * 0.985, 48, 48)
-    const material = new MeshBasicMaterial({ colorWrite: false })
+    const geometry = new SphereGeometry(GLOBE_RADIUS * OCCLUDER_RADIUS, 64, 64)
+    const material = new MeshBasicMaterial({ color: new Color(0x0c1a2a) })
     this.#occluder = new Mesh(geometry, material)
     // 불투명 물체가 먼저 그려져야 깊이가 채워진 뒤 점들이 시험된다
     this.#occluder.renderOrder = -1
@@ -262,8 +288,13 @@ export class GlobeScene {
         void main() {
           // 가장자리로 갈수록 밝아지는 림. 안티에일리어싱을 끈 탓에 생기는
           // 계단현상을 이 그라데이션이 가려준다.
-          float rim = pow(0.62 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.6);
-          gl_FragColor = vec4(uColor, clamp(rim, 0.0, 1.0) * 0.55);
+          //
+          // max로 밑을 0 위에 묶는 것이 중요하다. GLSL에서 음수 밑의 pow는
+          // 정의되지 않아 드라이버마다 다른 값(때로는 NaN)이 나오고,
+          // 그러면 헤일로가 지구를 덮어버린다.
+          float facing = dot(normalize(vNormal), vec3(0.0, 0.0, 1.0));
+          float rim = pow(max(0.0, 0.72 - facing), 3.2);
+          gl_FragColor = vec4(uColor, clamp(rim, 0.0, 1.0) * 0.28);
         }
       `,
     })

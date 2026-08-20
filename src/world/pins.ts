@@ -41,8 +41,15 @@ export const PIN_COLORS: Record<Severity, number> = {
 /** 지표에서 띄우는 높이. 붙이면 지구 점들에 반쪽이 먹힌다. */
 const PIN_LIFT = 1.015
 
-/** 배지가 뜨는 높이. 핀 위에 얹혀 보이되 지구에서 떨어져 보이지는 않는다. */
-const BADGE_LIFT = 1.085
+/**
+ * 배지가 뜨는 높이.
+ *
+ * 핀보다 아주 조금만 띄운다. 크게 띄우면 가장자리 핀의 배지가 지구 밖으로
+ * 밀려나 어느 집 것인지 알 수 없게 된다. 화면에서 핀 위로 올리는 일은
+ * 스프라이트의 앵커가 맡는다 — 같은 반지름에 두면 33픽셀 배지가 5픽셀 핀을
+ * 통째로 덮는다.
+ */
+const BADGE_LIFT = 1.02
 
 const PULSE = {
   critical: { periodMs: 1400, peak: 1 },

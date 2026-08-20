@@ -79,7 +79,7 @@ export class PinLayer {
           vPulse = pulse;
           vec4 view = modelViewMatrix * vec4(position, 1.0);
           // 기준 거리에서 5px, 맥동이 셀 때 12px까지. 뒤쪽 핀은 원근으로 작아진다.
-          gl_PointSize = (5.0 + pulse * 7.0) * (uRefDistance / -view.z);
+          gl_PointSize = (6.0 + pulse * 8.0) * (uRefDistance / -view.z);
           gl_Position = projectionMatrix * view;
         }
       `,
@@ -122,6 +122,9 @@ export class PinLayer {
       const [x, y, z] = spec.badgePosition
       sprite.position.set(x, y, z)
       sprite.scale.setScalar(BADGE_SCALE)
+      // 앵커를 아래쪽 바깥에 두어 배지가 화면에서 핀 위로 떠오르게 한다.
+      // 기본값(0.5, 0.5)이면 배지 한가운데가 핀에 겹쳐 핀이 안 보인다.
+      sprite.center.set(0.5, -0.35)
       this.group.add(sprite)
       this.#badges.push(sprite)
     }

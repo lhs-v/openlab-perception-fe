@@ -12,10 +12,10 @@ export type QualityTier = {
  * 점 수가 계속 바뀌고, 그게 화면에서 그대로 보인다.
  */
 export const QUALITY_TIERS: readonly QualityTier[] = [
-  { dotSamples: 26000, maxPixelRatio: 2, maxArcs: 12 },
-  { dotSamples: 18000, maxPixelRatio: 1.5, maxArcs: 8 },
-  { dotSamples: 12000, maxPixelRatio: 1, maxArcs: 5 },
-  { dotSamples: 7000, maxPixelRatio: 1, maxArcs: 3 },
+  { dotSamples: 48000, maxPixelRatio: 2, maxArcs: 12 },
+  { dotSamples: 30000, maxPixelRatio: 1.5, maxArcs: 8 },
+  { dotSamples: 18000, maxPixelRatio: 1, maxArcs: 5 },
+  { dotSamples: 10000, maxPixelRatio: 1, maxArcs: 3 },
 ]
 
 const WINDOW_FRAMES = 50
