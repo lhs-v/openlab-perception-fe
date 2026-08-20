@@ -15,14 +15,12 @@ import {
   SphereGeometry,
   WebGLRenderer,
 } from 'three'
+import { FIELD_OF_VIEW, HALO_SCALE, REST_DISTANCE } from '../dive'
 import type { Dot } from '../dots'
 import type { PinSpec } from '../pins'
 import { PinLayer } from './pinLayer'
 
 export const GLOBE_RADIUS = 1
-
-/** 지구 뒤에 두는 헤일로. 1.15배는 GitHub 지구본이 쓰는 비율이다. */
-const HALO_SCALE = 1.15
 
 /** 자전 속도(라디안/초). 한 바퀴에 약 4분 — 눈에 띄되 어지럽지 않다. */
 const SPIN_RATE = 0.026
@@ -72,8 +70,8 @@ export class GlobeScene {
     })
     this.#renderer.setClearColor(0x000000, 0)
 
-    this.#camera = new PerspectiveCamera(38, 1, 0.1, 100)
-    this.#camera.position.set(0, 0, 3.2)
+    this.#camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 100)
+    this.#camera.position.set(0, 0, REST_DISTANCE)
 
     // 살짝 기울여야 극이 정면으로 오지 않아 구처럼 읽힌다
     this.#globe.rotation.z = 0.41

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { latLonToVec3 } from '@/world/geo'
-import { DIVE_MS, NEAR_DISTANCE, VEIL_FROM, diveFrame, spinToFace } from '@/world/dive'
+import {
+  DIVE_MS,
+  FIELD_OF_VIEW,
+  HALO_SCALE,
+  NEAR_DISTANCE,
+  REST_DISTANCE,
+  VEIL_FROM,
+  diveFrame,
+  spinToFace,
+} from '@/world/dive'
 
 /** 지구를 Y축으로 돌린 뒤의 좌표 */
 function rotateY(v: readonly [number, number, number], theta: number) {
@@ -82,5 +91,30 @@ describe('diveFrame', () => {
   it('하강 길이는 사람이 따라올 수 있는 범위다', () => {
     expect(DIVE_MS).toBeGreaterThanOrEqual(500)
     expect(DIVE_MS).toBeLessThanOrEqual(1200)
+  })
+})
+
+describe('프레이밍', () => {
+  /** 지구 중심 평면에서 화면 세로 절반이 덮는 거리 */
+  const halfHeight = (distance: number) =>
+    distance * Math.tan(((FIELD_OF_VIEW / 2) * Math.PI) / 180)
+
+  it('안식 거리에서 헤일로까지 화면에 들어온다', () => {
+    // 3.2에서는 세로 절반이 1.10이라 1.15배 헤일로가 잘려 나갔다
+    expect(halfHeight(REST_DISTANCE)).toBeGreaterThan(HALO_SCALE * 1.1)
+  })
+
+  it('안식 거리에서 지구가 세로를 다 채우지 않는다', () => {
+    // 꽉 차면 확대된 것으로 읽히고 HUD가 놓일 자리도 없다
+    expect(1 / halfHeight(REST_DISTANCE)).toBeLessThan(0.75)
+  })
+
+  it('다 내려오면 지구가 화면을 넘긴다', () => {
+    // 하강 끝은 그 지역이 화면을 가득 채운 상태여야 인계가 자연스럽다
+    expect(1 / halfHeight(NEAR_DISTANCE)).toBeGreaterThan(1)
+  })
+
+  it('카메라가 지구 표면 안으로 들어가지 않는다', () => {
+    expect(NEAR_DISTANCE).toBeGreaterThan(1)
   })
 })

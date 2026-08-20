@@ -3,7 +3,6 @@ import { loadBundledScenarios } from '@/core/scenario-registry'
 import type { Scenario } from '@/core/schema'
 import ScenarioStage from '@/scenario/ScenarioStage'
 import World from '@/world/World'
-import type { Handoff } from '@/world/handoff'
 import type { HomeMarker } from '@/world/pins'
 
 /** 판정이 뜬 뒤 화면에 머무는 시간. 관객이 결론을 읽을 틈이다. */
@@ -29,7 +28,7 @@ function toHomes(scenarios: readonly Scenario[]): HomeMarker[] {
   }))
 }
 
-type Active = { scenario: Scenario; handoff: Handoff }
+type Active = { scenario: Scenario }
 
 export default function App() {
   const { ok, failed } = useMemo(() => loadBundledScenarios(), [])
@@ -43,10 +42,10 @@ export default function App() {
   const homes = useMemo(() => toHomes(ok), [ok])
 
   const enter = useCallback(
-    (id: string, handoff: Handoff) => {
+    (id: string) => {
       const scenario = ok.find((s) => s.id === id)
       if (!scenario) return
-      setActive({ scenario, handoff })
+      setActive({ scenario })
     },
     [ok],
   )
@@ -67,23 +66,15 @@ export default function App() {
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
-      <World homes={homes} onEnterScenario={enter} activeScenarioId={active?.scenario.id ?? null} />
-
-      {active && (
-        <div
-          data-testid="scenario-layer"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            // 인계 계약: 지구본이 잠긴 그 색에서 시작해 밝아진다.
-            // 색이 어긋나면 이 자리에서 번쩍이고, 그 번쩍임이 이음매다.
-            background: active.handoff.color,
-            animation: `handoff-fade ${active.handoff.fadeInMs}ms ease forwards`,
-          }}
-        >
-          <ScenarioStage scenario={active.scenario} />
-        </div>
-      )}
+      {/* 인계 색과 페이드는 World가 강제한다. 여기서 넘기는 것은 내용뿐이다 */}
+      <World
+        homes={homes}
+        onEnterScenario={enter}
+        activeScenarioId={active?.scenario.id ?? null}
+        onExitScenario={() => setActive(null)}
+      >
+        {active && <ScenarioStage key={active.scenario.id} scenario={active.scenario} />}
+      </World>
     </div>
   )
 }

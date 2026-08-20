@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { REST_DISTANCE } from './dive'
 import { landDots } from './dots'
 import { landMask } from './land'
 import { GlobeScene } from './globe/GlobeScene'
@@ -33,7 +34,7 @@ const GlobeCanvas = forwardRef<GlobeHandle, Props>(function GlobeCanvas({ pins }
       setPose: (pose) => sceneRef.current?.setPose(pose),
       pose: () => ({
         spinY: sceneRef.current?.spin ?? 0,
-        distance: sceneRef.current?.distance ?? 3.2,
+        distance: sceneRef.current?.distance ?? REST_DISTANCE,
       }),
     }),
     [],

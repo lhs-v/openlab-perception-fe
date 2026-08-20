@@ -6,6 +6,7 @@ import {
   Points,
   ShaderMaterial,
 } from 'three'
+import { REST_DISTANCE } from '../dive'
 import { pinPulse, type PinSpec } from '../pins'
 
 /**
@@ -51,9 +52,9 @@ export class PinLayer {
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,
-      // 기준 거리에서의 실제 픽셀 크기를 그대로 쓴다. 예전처럼 임의의 배율을
-      // 곱하면 카메라 거리(3.2)로 나뉘면서 기본 크기가 300픽셀을 넘어간다.
-      uniforms: { uRefDistance: { value: 3.2 } },
+      // 안식 거리에서의 실제 픽셀 크기를 그대로 쓴다. 임의의 배율을 곱하면
+      // 카메라 거리로 나뉘면서 기본 크기가 300픽셀을 넘어간다.
+      uniforms: { uRefDistance: { value: REST_DISTANCE } },
       vertexShader: `
         attribute vec3 pinColor;
         attribute float pulse;

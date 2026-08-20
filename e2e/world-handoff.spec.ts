@@ -69,3 +69,32 @@ test('만지면 자동 진입이 멈추고 남은 시간을 알려준다', async
   // 재개가 가까워지면 예고가 뜬다 — 예고 없이 화면을 뺏지 않는다
   await expect(page.getByTestId('resume-countdown')).toBeVisible({ timeout: 40_000 })
 })
+
+test('재생 중에 세계로 나가 다른 집을 고를 수 있다', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('home-kitchen-fire').click()
+  await expect(page.getByTestId('stage')).toBeVisible({ timeout: ENTRY_TIMEOUT })
+
+  // 재생이 끝나기 한참 전이다 — 45초짜리 시나리오를 몇 초만 보고 나간다
+  await expect(page.getByTestId('exit-scenario')).toBeVisible()
+  await page.getByTestId('exit-scenario').click()
+
+  // 시나리오가 닫히고 지구본이 다시 주인공이 된다
+  await expect(page.getByTestId('scenario-layer')).toHaveCount(0)
+  await expect(page.getByTestId('home-list')).toBeVisible()
+
+  // 스스로 나온 사람을 8초 만에 다른 집으로 끌고 들어가지 않는다
+  await page.waitForTimeout(11_000)
+  await expect(page.getByTestId('scenario-layer')).toHaveCount(0)
+
+  // 그리고 다른 집을 고를 수 있다
+  await page.getByTestId('home-gas-leak').click()
+  await expect(page.getByTestId('stage')).toBeVisible({ timeout: ENTRY_TIMEOUT })
+  await expect(page.getByTestId('stage')).toContainText('가스 누출')
+})
+
+test('지구본에서는 나가기 버튼이 없다', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('home-list')).toBeVisible()
+  await expect(page.getByTestId('exit-scenario')).toHaveCount(0)
+})
