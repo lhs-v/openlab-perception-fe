@@ -1,7 +1,16 @@
 import { expect, test } from '@playwright/test'
 
-test('kitchen-fire가 observe에서 verdict까지 도달한다', async ({ page }) => {
+/**
+ * 시나리오는 이제 처음부터 열려 있지 않다. 지구본이 기본 화면이고, 무입력
+ * 8초 뒤 하강해서 열린다. 이 헬퍼가 그 진입을 기다린다.
+ */
+async function enterScenario(page: import('@playwright/test').Page) {
   await page.goto('/')
+  await expect(page.getByTestId('stage')).toBeVisible({ timeout: 20_000 })
+}
+
+test('kitchen-fire가 observe에서 verdict까지 도달한다', async ({ page }) => {
+  await enterScenario(page)
 
   const stage = page.getByTestId('stage')
   await expect(stage).toHaveAttribute('data-phase', 'observe')
@@ -28,7 +37,7 @@ test('콘솔 오류 없이 재생된다', async ({ page }) => {
   })
   page.on('pageerror', (error) => errors.push(error.message))
 
-  await page.goto('/')
+  await enterScenario(page)
   await expect(page.getByTestId('stage')).toHaveAttribute('data-phase', 'verdict', {
     timeout: 40_000,
   })
@@ -36,7 +45,7 @@ test('콘솔 오류 없이 재생된다', async ({ page }) => {
 })
 
 test('연결선이 단계 전환 뒤에도 앵커에 붙어 있다', async ({ page }) => {
-  await page.goto('/')
+  await enterScenario(page)
 
   const stage = page.getByTestId('stage')
   await expect(stage).toHaveAttribute('data-phase', 'verdict', { timeout: 40_000 })

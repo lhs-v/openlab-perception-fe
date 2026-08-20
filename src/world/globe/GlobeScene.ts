@@ -15,6 +15,8 @@ import {
   WebGLRenderer,
 } from 'three'
 import type { Dot } from '../dots'
+import type { PinSpec } from '../pins'
+import { PinLayer } from './pinLayer'
 
 export const GLOBE_RADIUS = 1
 
@@ -48,6 +50,9 @@ export class GlobeScene {
   #globe = new Group()
   #points: Points | null = null
   #halo: Mesh | null = null
+  #pins = new PinLayer()
+  /** 하강이 카메라를 잡고 있는 동안의 자세. null이면 자유 자전. */
+  #pose: { spinY: number; distance: number } | null = null
   #maxPixelRatio: number
   #width = 1
   #height = 1
@@ -69,10 +74,31 @@ export class GlobeScene {
 
     // 살짝 기울여야 극이 정면으로 오지 않아 구처럼 읽힌다
     this.#globe.rotation.z = 0.41
+    this.#globe.add(this.#pins.group)
     this.#scene.add(this.#globe)
 
     this.#buildHalo()
     this.setDots(options.dots)
+  }
+
+  /** 지구본 위의 집들. 12개뿐이라 통째로 갈아끼운다. */
+  setPins(specs: readonly PinSpec[]): void {
+    if (this.#disposed) return
+    this.#pins.setPins(specs)
+  }
+
+  /**
+   * 하강 중 카메라 자세를 밖에서 잡는다. `null`을 주면 지금 각도에서
+   * 자유 자전으로 돌아간다 — 원래 각도로 되돌리지 않는 것이 중요하다.
+   * 되돌리면 시나리오에서 나올 때 지구가 홱 튄다.
+   */
+  setPose(pose: { spinY: number; distance: number } | null): void {
+    if (this.#disposed) return
+    this.#pose = pose
+    if (pose) {
+      this.#globe.rotation.y = pose.spinY
+      this.#camera.position.z = pose.distance
+    }
   }
 
   /** 품질 등급이 내려가면 점을 줄여 다시 만든다. */
@@ -121,19 +147,25 @@ export class GlobeScene {
   /** 외부 구동. 앱에서는 rAF가, 테스트에서는 직접 부른다. */
   frame(now: number): void {
     if (this.#disposed) return
-    if (this.#lastNow !== null) {
+    if (this.#lastNow !== null && this.#pose === null) {
       const elapsed = (now - this.#lastNow) / 1000
       // 시계가 뒤로 가거나 탭이 오래 멈췄던 프레임은 건너뛴다.
       // 안 그러면 복귀하는 순간 지구가 홱 돌아간다.
       if (elapsed > 0 && elapsed < 1) this.#globe.rotation.y += SPIN_RATE * elapsed
     }
     this.#lastNow = now
+    this.#pins.frame(now)
     this.#renderer.render(this.#scene, this.#camera)
   }
 
-  /** 지금 화면에 보이는 자전 각도(라디안). 테스트가 회전을 확인하는 데 쓴다. */
+  /** 지금 화면에 보이는 자전 각도(라디안). 하강이 여기서 이어받는다. */
   get spin(): number {
     return this.#globe.rotation.y
+  }
+
+  /** 지금 카메라 거리. 하강이 여기서 이어받는다. */
+  get distance(): number {
+    return this.#camera.position.z
   }
 
   /** three.js가 붙들고 있는 자원 수. 무인 구동 누수를 e2e에서 확인하는 데 쓴다. */
@@ -150,6 +182,7 @@ export class GlobeScene {
     this.#disposed = true
 
     this.#disposePoints()
+    this.#pins.dispose()
 
     if (this.#halo) {
       this.#scene.remove(this.#halo)

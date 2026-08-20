@@ -1,8 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { landDots } from './dots'
 import { landMask } from './land'
 import { GlobeScene } from './globe/GlobeScene'
+import type { PinSpec } from './pins'
 import { QUALITY_TIERS, QualityMonitor } from './quality'
+
+export type GlobeHandle = {
+  /** 하강이 카메라를 잡는다. null이면 지금 각도에서 자유 자전으로 돌아간다 */
+  setPose(pose: { spinY: number; distance: number } | null): void
+  /** 하강을 시작할 때 이어받을 현재 자세 */
+  pose(): { spinY: number; distance: number }
+}
+
+type Props = {
+  pins: readonly PinSpec[]
+}
 
 /**
  * 지구본 씬의 React 수명주기.
@@ -11,19 +23,34 @@ import { QUALITY_TIERS, QualityMonitor } from './quality'
  * 설정→정리→설정에서 같은 인스턴스가 dispose된 뒤 다시 쓰이게 되고,
  * 개발 모드에서만 지구본이 사라진다.
  */
-export default function GlobeCanvas() {
+const GlobeCanvas = forwardRef<GlobeHandle, Props>(function GlobeCanvas({ pins }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sceneRef = useRef<GlobeScene | null>(null)
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      setPose: (pose) => sceneRef.current?.setPose(pose),
+      pose: () => ({
+        spinY: sceneRef.current?.spin ?? 0,
+        distance: sceneRef.current?.distance ?? 3.2,
+      }),
+    }),
+    [],
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const mask = landMask()
+    const dotsFor = (samples: number) =>
+      landDots(mask, { samples, radius: 1, threshold: 1 })
+
     const monitor = new QualityMonitor({
       onChange: (tier) => {
         const settings = QUALITY_TIERS[tier]!
-        scene.setDots(landDots(mask, { samples: settings.dotSamples, radius: 1, threshold: 1 }))
+        scene.setDots(dotsFor(settings.dotSamples))
         scene.setMaxPixelRatio(settings.maxPixelRatio)
       },
     })
@@ -31,7 +58,7 @@ export default function GlobeCanvas() {
     const top = QUALITY_TIERS[0]!
     const scene = new GlobeScene({
       canvas,
-      dots: landDots(mask, { samples: top.dotSamples, radius: 1, threshold: 1 }),
+      dots: dotsFor(top.dotSamples),
       maxPixelRatio: top.maxPixelRatio,
     })
     sceneRef.current = scene
@@ -45,7 +72,7 @@ export default function GlobeCanvas() {
 
     const observer =
       typeof ResizeObserver === 'undefined' || !host ? null : new ResizeObserver(fit)
-    observer?.observe(host!)
+    if (host) observer?.observe(host)
 
     let frame = requestAnimationFrame(function loop(now) {
       monitor.frame(now)
@@ -61,9 +88,16 @@ export default function GlobeCanvas() {
     }
   }, [])
 
+  // 핀은 씬과 별도 주기로 바뀐다 — 저작으로 하나 더 생기면 여기만 다시 돈다
+  useEffect(() => {
+    sceneRef.current?.setPins(pins)
+  }, [pins])
+
   return (
     <div data-testid="globe" style={{ position: 'absolute', inset: 0 }}>
       <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
     </div>
   )
-}
+})
+
+export default GlobeCanvas
