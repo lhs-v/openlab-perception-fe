@@ -1,0 +1,211 @@
+import {
+  AdditiveBlending,
+  BackSide,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  Group,
+  Mesh,
+  PerspectiveCamera,
+  Points,
+  PointsMaterial,
+  Scene,
+  ShaderMaterial,
+  SphereGeometry,
+  WebGLRenderer,
+} from 'three'
+import type { Dot } from '../dots'
+
+export const GLOBE_RADIUS = 1
+
+/** 지구 뒤에 두는 헤일로. 1.15배는 GitHub 지구본이 쓰는 비율이다. */
+const HALO_SCALE = 1.15
+
+/** 자전 속도(라디안/초). 한 바퀴에 약 4분 — 눈에 띄되 어지럽지 않다. */
+const SPIN_RATE = 0.026
+
+export type GlobeSceneOptions = {
+  canvas: HTMLCanvasElement
+  dots: readonly Dot[]
+  /** 품질 등급이 정하는 픽셀 비율 상한 */
+  maxPixelRatio?: number
+}
+
+/**
+ * 지구본 씬 하나.
+ *
+ * three.js에 닿는 코드는 이 파일 안에 가둔다. 바깥(`GlobeCanvas`, `World`)은
+ * three.js를 import하지 않으므로, 다른 코드베이스로 옮길 때 렌더러를 통째로
+ * 갈아끼워도 나머지가 그대로 산다.
+ *
+ * 스스로 돌지 않는다 — 계획 1의 `Clock`과 같은 이유로 `frame(now)`를 밖에서
+ * 부른다. 그래야 품질 모니터가 같은 시각을 보고, 테스트가 시간을 통제할 수 있다.
+ */
+export class GlobeScene {
+  #renderer: WebGLRenderer
+  #scene = new Scene()
+  #camera: PerspectiveCamera
+  #globe = new Group()
+  #points: Points | null = null
+  #halo: Mesh | null = null
+  #maxPixelRatio: number
+  #width = 1
+  #height = 1
+  #lastNow: number | null = null
+  #disposed = false
+
+  constructor(options: GlobeSceneOptions) {
+    this.#maxPixelRatio = options.maxPixelRatio ?? 2
+
+    this.#renderer = new WebGLRenderer({
+      canvas: options.canvas,
+      antialias: false,
+      alpha: true,
+    })
+    this.#renderer.setClearColor(0x000000, 0)
+
+    this.#camera = new PerspectiveCamera(38, 1, 0.1, 100)
+    this.#camera.position.set(0, 0, 3.2)
+
+    // 살짝 기울여야 극이 정면으로 오지 않아 구처럼 읽힌다
+    this.#globe.rotation.z = 0.41
+    this.#scene.add(this.#globe)
+
+    this.#buildHalo()
+    this.setDots(options.dots)
+  }
+
+  /** 품질 등급이 내려가면 점을 줄여 다시 만든다. */
+  setDots(dots: readonly Dot[]): void {
+    if (this.#disposed) return
+    this.#disposePoints()
+
+    const positions = new Float32Array(dots.length * 3)
+    for (let i = 0; i < dots.length; i += 1) {
+      const [x, y, z] = dots[i]!.position
+      positions[i * 3] = x
+      positions[i * 3 + 1] = y
+      positions[i * 3 + 2] = z
+    }
+
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new BufferAttribute(positions, 3))
+
+    const material = new PointsMaterial({
+      color: new Color(0x2f6ea8),
+      size: 0.011,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    })
+
+    this.#points = new Points(geometry, material)
+    this.#globe.add(this.#points)
+  }
+
+  resize(width: number, height: number): void {
+    if (this.#disposed) return
+    this.#width = Math.max(1, width)
+    this.#height = Math.max(1, height)
+    this.#applySize()
+  }
+
+  /** 품질 등급이 픽셀 비율을 낮출 때. 즉시 반영한다. */
+  setMaxPixelRatio(ratio: number): void {
+    if (this.#disposed) return
+    this.#maxPixelRatio = ratio
+    this.#applySize()
+  }
+
+  /** 외부 구동. 앱에서는 rAF가, 테스트에서는 직접 부른다. */
+  frame(now: number): void {
+    if (this.#disposed) return
+    if (this.#lastNow !== null) {
+      const elapsed = (now - this.#lastNow) / 1000
+      // 시계가 뒤로 가거나 탭이 오래 멈췄던 프레임은 건너뛴다.
+      // 안 그러면 복귀하는 순간 지구가 홱 돌아간다.
+      if (elapsed > 0 && elapsed < 1) this.#globe.rotation.y += SPIN_RATE * elapsed
+    }
+    this.#lastNow = now
+    this.#renderer.render(this.#scene, this.#camera)
+  }
+
+  /** 지금 화면에 보이는 자전 각도(라디안). 테스트가 회전을 확인하는 데 쓴다. */
+  get spin(): number {
+    return this.#globe.rotation.y
+  }
+
+  /** three.js가 붙들고 있는 자원 수. 무인 구동 누수를 e2e에서 확인하는 데 쓴다. */
+  get info(): { geometries: number; textures: number; programs: number } {
+    return {
+      geometries: this.#renderer.info.memory.geometries,
+      textures: this.#renderer.info.memory.textures,
+      programs: this.#renderer.info.programs?.length ?? 0,
+    }
+  }
+
+  dispose(): void {
+    if (this.#disposed) return
+    this.#disposed = true
+
+    this.#disposePoints()
+
+    if (this.#halo) {
+      this.#scene.remove(this.#halo)
+      this.#halo.geometry.dispose()
+      ;(this.#halo.material as ShaderMaterial).dispose()
+      this.#halo = null
+    }
+
+    this.#scene.clear()
+    this.#renderer.dispose()
+  }
+
+  #applySize(): void {
+    const ratio = Math.min(window.devicePixelRatio || 1, this.#maxPixelRatio)
+    this.#renderer.setPixelRatio(ratio)
+    this.#renderer.setSize(this.#width, this.#height, false)
+    this.#camera.aspect = this.#width / this.#height
+    this.#camera.updateProjectionMatrix()
+  }
+
+  #disposePoints(): void {
+    if (!this.#points) return
+    this.#globe.remove(this.#points)
+    this.#points.geometry.dispose()
+    ;(this.#points.material as PointsMaterial).dispose()
+    this.#points = null
+  }
+
+  #buildHalo(): void {
+    const geometry = new SphereGeometry(GLOBE_RADIUS * HALO_SCALE, 48, 48)
+    const material = new ShaderMaterial({
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      side: BackSide,
+      uniforms: { uColor: { value: new Color(0x4ea1ff) } },
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        varying vec3 vNormal;
+        void main() {
+          // 가장자리로 갈수록 밝아지는 림. 안티에일리어싱을 끈 탓에 생기는
+          // 계단현상을 이 그라데이션이 가려준다.
+          float rim = pow(0.62 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.6);
+          gl_FragColor = vec4(uColor, clamp(rim, 0.0, 1.0) * 0.55);
+        }
+      `,
+    })
+
+    this.#halo = new Mesh(geometry, material)
+    this.#scene.add(this.#halo)
+  }
+}
