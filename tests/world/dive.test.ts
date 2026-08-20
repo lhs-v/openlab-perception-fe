@@ -104,9 +104,12 @@ describe('프레이밍', () => {
     expect(halfHeight(REST_DISTANCE)).toBeGreaterThan(HALO_SCALE * 1.1)
   })
 
-  it('안식 거리에서 지구가 세로를 다 채우지 않는다', () => {
-    // 꽉 차면 확대된 것으로 읽히고 HUD가 놓일 자리도 없다
-    expect(1 / halfHeight(REST_DISTANCE)).toBeLessThan(0.75)
+  it('안식 거리에서 지구가 화면의 절반 남짓을 차지한다', () => {
+    // 위아래 양쪽을 묶는다. 한쪽만 묶으면 반대편 극단으로 흘러간다 —
+    // 실제로 91%까지 갔다가 63%까지 물러났다가 다시 73%로 왔다.
+    const share = 1 / halfHeight(REST_DISTANCE)
+    expect(share).toBeGreaterThan(0.5)
+    expect(share).toBeLessThan(0.65)
   })
 
   it('다 내려오면 지구가 화면을 넘긴다', () => {
